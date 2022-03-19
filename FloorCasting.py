@@ -1,0 +1,121 @@
+from ws2 import *
+from random import randint
+import time
+import math
+from numba import jit
+
+#---------------------------------------------
+#  Floorcasting BETA
+#---------------------------------------------
+class WindowSystem2(WindowSystem):
+    def __init__(self, width=0, height=0, title=""):
+        super().__init__(width,height,title)
+        self.angle = 0
+
+        self.horizon_gap = 5
+
+        self.texture = PILImage.open("ground_texture_1.jpg")
+        self.texture_bitmap = self.texture.tobytes()
+
+        self.ouverture = 60*math.pi/180
+        self.background = PILImage.open("360-view-from-mount-oklahoma.jpg")
+        self.resizeBackgroundImage()
+
+        self.xt0 = self.yt0 = 0.0
+        self.angle = 0
+        self.z = self.texture.height/2
+
+    def keyProc(self, event):
+        super().keyProc(event)
+        if event.keysym == "Left":
+            self.angle -= math.pi/180
+        elif event.keysym == "Right":
+            self.angle += math.pi/180
+
+    def resizeBackgroundImage(self):
+        w = self.buffer.width*2*math.pi/self.ouverture
+        h = self.buffer.height/2+self.horizon_gap
+        self.bg_resized = self.background.resize((int(w), int(h)))
+
+    def onResize(self, event):
+        super().onResize(event)
+        self.resizeBackgroundImage()
+
+    def draw(self, imagedraw, w,h):
+        # imagedraw.rectangle((0,0,w,h),fill="black")
+
+        t = time.perf_counter()
+
+        if self.bg_resized:
+            f_angle = w / self.ouverture
+            x = -(self.angle % (2*math.pi)) * f_angle
+            self.buffer.paste(self.bg_resized, (int(x),0))
+            if x+self.bg_resized.width < w:
+                self.buffer.paste(self.bg_resized, (int(x+self.bg_resized.width),0))
+            if x > 0:
+                self.buffer.paste(self.bg_resized, (int(x-self.bg_resized.width),0))
+
+        bmparray = bytearray(self.buffer.tobytes())
+
+        c = math.cos(self.angle)
+        s = math.sin(self.angle)
+
+        mapTexture(bmparray, w, h,
+                    h/2+self.horizon_gap, self.z,
+                    self.texture_bitmap, self.texture.width, self.texture.height,
+                    self.xt0, self.yt0, c, s, s, -c)
+
+        self.buffer.frombytes(bytes(bmparray))
+
+        print(1/(time.perf_counter()-t),"FPS")
+
+        # self.angle = self.angle - math.pi/180
+        # self.xt0 += self.texture.width/20
+
+@jit(nopython=True)
+def mapTexture(bmparray, w, h, yhorz, z, texture, wtex, htex, ox, oy, a11, a12, a21, a22 ):
+    scaleX = w
+    scaleY = scaleX
+    XC = int(w / 2)
+    YC = int(h / 2)
+
+    for line in range(int(yhorz), h-1):
+        x, y = invertCoords(0, line, z, XC, YC, scaleX, scaleY)
+        xtex, ytex = matMulXY(x-ox,y-oy, a11, a12, a21, a22 )
+        x, y = invertCoords(w-1, line, z, XC, YC, scaleX, scaleY)
+        xtex2, ytex2 = matMulXY(x-ox,y-oy, a11, a12, a21, a22 )
+        xd = (xtex2-xtex)/w
+        yd = (ytex2-ytex)/h
+
+        mapTextureHLine(bmparray,w,line,texture,wtex,htex,xtex,ytex,xd,yd)
+
+@jit(nopython=True)
+def invertCoords(X,Y,z,XC,YC,scaleX,scaleY):
+    y = z * scaleY/(Y-YC)
+    x = y * (X-XC)/scaleX
+    return (x, y)
+
+@jit(nopython=True)
+def matMulXY( x, y, a11, a12, a21, a22 ):
+    return (x*a11+y*a21, x*a12+y*a22)
+
+@jit(nopython=True)
+def mapTextureHLine(bmparray, w, y, texture, wtex, htex, ox, oy, xdx, xdy):
+    i = (y*w)*3
+    xtex1 = ox; ytex1 = oy
+    for x in range(0, w):
+        X = int(xtex1) % wtex
+        Y = int(ytex1) % htex
+        if X < 0: X = X + wtex
+        if Y < 0: Y = Y + htex
+        itex = (Y * wtex + X) * 3
+        bmparray[i] = texture[itex]
+        bmparray[i+1] = texture[itex+1]
+        bmparray[i+2] = texture[itex+2]
+        i = i + 3
+        xtex1 = xtex1 + xdx
+        ytex1 = ytex1 + xdy
+
+
+ws = WindowSystem2(width=640, height=480)
+ws.loop()
