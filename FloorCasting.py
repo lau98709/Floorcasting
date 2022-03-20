@@ -2,7 +2,7 @@ from ws2 import *
 from random import randint
 import time
 import math
-from numba import jit
+from numba import njit
 
 #---------------------------------------------
 #  Floorcasting BETA
@@ -76,7 +76,7 @@ class WindowSystem2(WindowSystem):
         # self.angle = self.angle - math.pi/180
         # self.xt0 += self.texture.width/20
 
-@jit(nopython=True)
+@njit
 def mapFloorTexture(bmparray, w, h, yhorz, z, texture, wtex, htex, ox, oy, a11, a12, a21, a22 ):
     scaleX = w
     scaleY = scaleX
@@ -85,26 +85,27 @@ def mapFloorTexture(bmparray, w, h, yhorz, z, texture, wtex, htex, ox, oy, a11, 
 
     for line in range(int(yhorz), h-1):
         x, y = invertCoords(0, line, z, XC, YC, scaleX, scaleY)
-        xtex, ytex = matMulXY(x-ox,y-oy, a11, a12, a21, a22 )
+        xtex, ytex = matMulXY(x-ox,y-oy, a11, a12, a21, a22)
         x, y = invertCoords(w-1, line, z, XC, YC, scaleX, scaleY)
-        xtex2, ytex2 = matMulXY(x-ox,y-oy, a11, a12, a21, a22 )
+        xtex2, ytex2 = matMulXY(x-ox,y-oy, a11, a12, a21, a22)
         xd = (xtex2-xtex)/w
         yd = (ytex2-ytex)/h
+        #  light : 0 to 255
+        light = int(128*(0.5+1.5*((line-yhorz)/(h-yhorz))))
+        mapTextureHLine(bmparray,w,line,texture,wtex,htex,xtex,ytex,xd,yd,light)
 
-        mapTextureHLine(bmparray,w,line,texture,wtex,htex,xtex,ytex,xd,yd)
-
-@jit(nopython=True)
+@njit
 def invertCoords(X,Y,z,XC,YC,scaleX,scaleY):
     y = z * scaleY/(Y-YC)
     x = y * (X-XC)/scaleX
     return (x, y)
 
-@jit(nopython=True)
+@njit
 def matMulXY( x, y, a11, a12, a21, a22 ):
     return (x*a11+y*a21, x*a12+y*a22)
 
-@jit(nopython=True)
-def mapTextureHLine(bmparray, w, y, texture, wtex, htex, ox, oy, xdx, xdy):
+@njit
+def mapTextureHLine(bmparray, w, y, texture, wtex, htex, ox, oy, xdx, xdy, light):
     i = (y*w)*3
     xtex1 = ox; ytex1 = oy
     for x in range(0, w):
@@ -113,9 +114,9 @@ def mapTextureHLine(bmparray, w, y, texture, wtex, htex, ox, oy, xdx, xdy):
         if X < 0: X = X + wtex
         if Y < 0: Y = Y + htex
         itex = (Y * wtex + X) * 3
-        bmparray[i] = texture[itex]
-        bmparray[i+1] = texture[itex+1]
-        bmparray[i+2] = texture[itex+2]
+        bmparray[i] = texture[itex]*light//256
+        bmparray[i+1] = texture[itex+1]*light//256
+        bmparray[i+2] = texture[itex+2]*light//256
         i = i + 3
         xtex1 = xtex1 + xdx
         ytex1 = ytex1 + xdy
