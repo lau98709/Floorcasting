@@ -31,6 +31,10 @@ class WindowSystem2(WindowSystem):
             self.angle -= math.pi/180
         elif event.keysym == "Right":
             self.angle += math.pi/180
+        elif event.keysym == "Up":
+            self.z += 2
+        elif event.keysym == "Down":
+            self.z -= 2
 
     def resizeBackgroundImage(self):
         w = self.buffer.width*2*math.pi/self.ouverture
@@ -60,7 +64,7 @@ class WindowSystem2(WindowSystem):
         c = math.cos(self.angle)
         s = math.sin(self.angle)
 
-        mapTexture(bmparray, w, h,
+        mapFloorTexture(bmparray, w, h,
                     h/2+self.horizon_gap, self.z,
                     self.texture_bitmap, self.texture.width, self.texture.height,
                     self.xt0, self.yt0, c, s, s, -c)
@@ -73,7 +77,7 @@ class WindowSystem2(WindowSystem):
         # self.xt0 += self.texture.width/20
 
 @jit(nopython=True)
-def mapTexture(bmparray, w, h, yhorz, z, texture, wtex, htex, ox, oy, a11, a12, a21, a22 ):
+def mapFloorTexture(bmparray, w, h, yhorz, z, texture, wtex, htex, ox, oy, a11, a12, a21, a22 ):
     scaleX = w
     scaleY = scaleX
     XC = int(w / 2)
