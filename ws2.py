@@ -79,6 +79,7 @@ class WindowSystem:
     def initBuffer(self):
         w, h = self.canvasSize()
         self.buffer = PILImage.new('RGB', (w,h), color='black')
+        self.imgtk = ImageTk.PhotoImage(self.buffer)
 
     def putBuffer(self):
         w, h = self.canvasSize()
@@ -88,6 +89,7 @@ class WindowSystem:
         self.imgtk = ImageTk.PhotoImage(self.buffer)
         self.canvas.delete('all')
         self.canvas.create_image(0, 0, anchor=NW, image=self.imgtk)
+
         self.window.update()
 
     def update(self, draw=True):

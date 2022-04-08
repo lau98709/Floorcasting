@@ -48,6 +48,7 @@ class WindowSystem2(WindowSystem):
     def draw(self, imagedraw, w,h):
         # imagedraw.rectangle((0,0,w,h),fill="black")
 
+        global t0
         t = time.perf_counter()
 
         if self.bg_resized:
@@ -71,7 +72,8 @@ class WindowSystem2(WindowSystem):
 
         self.buffer.frombytes(bytes(bmparray))
 
-        print(1/(time.perf_counter()-t),"FPS")
+        print(1/(time.perf_counter()-t),"FPS", 1/(t-t0), "FPS_total")
+        t0 = t
 
         # self.angle = self.angle - math.pi/180
         # self.xt0 += self.texture.width/20
@@ -121,6 +123,8 @@ def mapTextureHLine(bmparray, w, y, texture, wtex, htex, ox, oy, xdx, xdy, light
         xtex1 = xtex1 + xdx
         ytex1 = ytex1 + xdy
 
+
+t0 = time.perf_counter()
 
 ws = WindowSystem2(width=640, height=480)
 ws.loop()
