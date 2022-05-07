@@ -26,7 +26,9 @@ class WindowSystem:
         self.initBuffer()
         # self.putBuffer()
 
-        self.window.bind("<KeyPress>", self.keyProc)
+        self.keystate = {}
+        self.window.bind("<KeyPress>", self.keyPress)
+        self.window.bind("<KeyRelease>", self.keyRelease)
         self.window.bind("<Configure>", self.onResize)
 
         self.canvas.bind("<Motion>", self.mouseMove)
@@ -68,6 +70,13 @@ class WindowSystem:
     def keyProc(self, event):
         if event.keysym == "Escape":
             self.running = False
+
+    def keyPress(self, event):
+        self.keystate[event.keysym] = True
+        self.keyProc(event)
+
+    def keyRelease(self, event):
+        self.keystate[event.keysym] = False
 
     def onResize(self, event):
         self.initBuffer()
